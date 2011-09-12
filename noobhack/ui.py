@@ -13,6 +13,7 @@ import locale
 import termios
 import string
 
+import colorpatterns
 from noobhack.game import status, shops
 
 # Map vt102 colors to curses colors. Notably nethack likes to use `brown`
@@ -621,26 +622,25 @@ class Game:
             attrs = char_style + [get_color(foreground, background)]
             window.chgat(row, col, 1, reduce(lambda a, b: a | b, attrs)) 
     
-        bpos = string.find(row_c, " blessed ", 0)
-        while bpos != -1 :
-                attrs = reduce(lambda a, b: a | b, 
-                    [curses.A_BOLD, get_color(curses.COLOR_GREEN)])
-                window.chgat(row, bpos + 1, 7, attrs)
-                bpos = string.find(row_c, " blessed ", bpos + 8)
-               
-        bpos = string.find(row_c, " uncursed ", 0)
-        while bpos != -1 :
-                attrs = reduce(lambda a, b: a | b, 
-                    [curses.A_BOLD, get_color(curses.COLOR_YELLOW)])
-                window.chgat(row, bpos + 1, 8, attrs)
-                bpos = string.find(row_c, " uncursed ", bpos + 9)
-        
-        bpos = string.find(row_c, " cursed ", 0)
-        while bpos != -1 :
-                attrs = reduce(lambda a, b: a | b, 
-                    [curses.A_BOLD, get_color(curses.COLOR_RED, curses.COLOR_YELLOW)])
-                window.chgat(row, bpos + 1, 6, attrs)
-                bpos = string.find(row_c, " cursed ", bpos + 7)
+
+        for searchString, colorstyle in colorpatterns.patterns.iteritems():
+            bpos = string.find(row_c, searchString, 0)
+            while (bpos != -1) :
+              style = colorstyle[0]
+              if (len(colorstyle) > 1):
+                forecolor = colorstyle[1] 
+              else:
+                forecolor = "default" 
+              if (len(colorstyle) > 2):
+                backcolor = colorstyle[2] 
+              else:
+                backcolor = "default"
+
+              attrs = reduce(lambda a, b : a | b,                  
+                  [styles.get(style), get_color(colors.get(forecolor), colors.get(backcolor))])
+              window.chgat(row, bpos, len(searchString), attrs)
+              bpos = string.find(row_c, searchString, bpos + len(searchString) + 1)
+
         
         if "HP:" in row_c:
             # Highlight health depending on much much is left.
