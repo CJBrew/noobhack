@@ -622,9 +622,7 @@ class Game:
             attrs = char_style + [get_color(foreground, background)]
             window.chgat(row, col, 1, reduce(lambda a, b: a | b, attrs)) 
     
-
         for searchString, colorstyle in colorpatterns.patterns.iteritems():
-          
             for match in re.finditer("\\b" + searchString + "\\b", row_c):
               style = colorstyle[0]
               if (len(colorstyle) > 1):
