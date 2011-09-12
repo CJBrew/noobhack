@@ -11,6 +11,7 @@ import curses
 import struct
 import locale
 import termios
+import string
 
 from noobhack.game import status, shops
 
@@ -619,26 +620,28 @@ class Game:
             char_style = [styles.get(s, curses.A_NORMAL) for s in char_style]
             attrs = char_style + [get_color(foreground, background)]
             window.chgat(row, col, 1, reduce(lambda a, b: a | b, attrs)) 
-
-        if " - " in row_c: # looks like an inventory line
-            match = re.search(" blessed ", row_c)
-            if match is not None:
+    
+        bpos = string.find(row_c, " blessed ", 0)
+        while bpos != -1 :
                 attrs = reduce(lambda a, b: a | b, 
                     [curses.A_BOLD, get_color(curses.COLOR_GREEN)])
-                window.chgat(row, match.start() + 1, 7, attrs)
+                window.chgat(row, bpos + 1, 7, attrs)
+                bpos = string.find(row_c, " blessed ", bpos + 8)
                
-            match = re.search(" uncursed ", row_c)
-            if match is not None:
+        bpos = string.find(row_c, " uncursed ", 0)
+        while bpos != -1 :
                 attrs = reduce(lambda a, b: a | b, 
                     [curses.A_BOLD, get_color(curses.COLOR_YELLOW)])
-                window.chgat(row, match.start() + 1, 8, attrs)
-
-            match = re.search(" cursed ", row_c)
-            if match is not None:
+                window.chgat(row, bpos + 1, 8, attrs)
+                bpos = string.find(row_c, " uncursed ", bpos + 9)
+        
+        bpos = string.find(row_c, " cursed ", 0)
+        while bpos != -1 :
                 attrs = reduce(lambda a, b: a | b, 
-                    [curses.A_BOLD, get_color(curses.COLOR_RED)])
-                window.chgat(row, match.start() + 1, 6, attrs)
-
+                    [curses.A_BOLD, get_color(curses.COLOR_RED, curses.COLOR_YELLOW)])
+                window.chgat(row, bpos + 1, 6, attrs)
+                bpos = string.find(row_c, " cursed ", bpos + 7)
+        
         if "HP:" in row_c:
             # Highlight health depending on much much is left.
             match = re.search("HP:(\\d+)\\((\\d+)\\)", row_c)
