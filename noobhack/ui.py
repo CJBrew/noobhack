@@ -620,6 +620,25 @@ class Game:
             attrs = char_style + [get_color(foreground, background)]
             window.chgat(row, col, 1, reduce(lambda a, b: a | b, attrs)) 
 
+        if " - " in row_c: # looks like an inventory line
+            match = re.search(" blessed ", row_c)
+            if match is not None:
+                attrs = reduce(lambda a, b: a | b, 
+                    [curses.A_BOLD, get_color(curses.COLOR_GREEN)])
+                window.chgat(row, match.start() + 1, 7, attrs)
+               
+            match = re.search(" uncursed ", row_c)
+            if match is not None:
+                attrs = reduce(lambda a, b: a | b, 
+                    [curses.A_BOLD, get_color(curses.COLOR_YELLOW)])
+                window.chgat(row, match.start() + 1, 8, attrs)
+
+            match = re.search(" cursed ", row_c)
+            if match is not None:
+                attrs = reduce(lambda a, b: a | b, 
+                    [curses.A_BOLD, get_color(curses.COLOR_RED)])
+                window.chgat(row, match.start() + 1, 6, attrs)
+
         if "HP:" in row_c:
             # Highlight health depending on much much is left.
             match = re.search("HP:(\\d+)\\((\\d+)\\)", row_c)
