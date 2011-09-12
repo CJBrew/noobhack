@@ -624,8 +624,8 @@ class Game:
     
 
         for searchString, colorstyle in colorpatterns.patterns.iteritems():
-            bpos = string.find(row_c, searchString, 0)
-            while (bpos != -1) :
+          
+            for match in re.finditer("\\b" + searchString + "\\b", row_c):
               style = colorstyle[0]
               if (len(colorstyle) > 1):
                 forecolor = colorstyle[1] 
@@ -638,8 +638,7 @@ class Game:
 
               attrs = reduce(lambda a, b : a | b,                  
                   [styles.get(style), get_color(colors.get(forecolor), colors.get(backcolor))])
-              window.chgat(row, bpos, len(searchString), attrs)
-              bpos = string.find(row_c, searchString, bpos + len(searchString) + 1)
+              window.chgat(row, match.start(), match.end() - match.start(), attrs)
 
         
         if "HP:" in row_c:
