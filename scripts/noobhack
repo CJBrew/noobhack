@@ -10,6 +10,10 @@ import optparse
 
 import cPickle as pickle
 
+#import profile
+
+import cProfile
+
 import vt102 
 
 from noobhack import ui, telnet, process, proxy
@@ -314,9 +318,10 @@ class Noobhack:
 
 if __name__ == "__main__":
     locale.setlocale(locale.LC_ALL, "")
-
+    
     hack = Noobhack()
     try:
-        curses.wrapper(hack.run)
+#        profile.run('curses.wrapper(hack.run); print')     
+         cProfile.run('curses.wrapper(hack.run)', "noobhack.trace")
     except IOError, exit_message:
         print exit_message

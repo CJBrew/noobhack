@@ -1,4 +1,4 @@
-from distutils.core import setup
+from distutils.core import setup, Extension
 
 setup(
     name="noobhack",
@@ -11,5 +11,6 @@ setup(
     requires=["vt102 (>=0.3.2)"],
     packages=["noobhack", "noobhack.game"],
     scripts=["scripts/noobhack"],
-    license="Lesser General Public License v3.0"
+    license="Lesser General Public License v3.0",
+    ext_modules=[Extension('intrinsicsC', ['intrinsics.cpp'])],
 )

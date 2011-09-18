@@ -5,9 +5,15 @@ consuming and processing those events in an intelligent way.
 
 import re
 
+from noobhack import ui
+import vt102
+import logging
+
 from noobhack.game.graphics import ibm
 from noobhack.game import shops, status, intrinsics, sounds, dungeon
 from noobhack.game.events import dispatcher
+
+import intrinsicsC
 
 class Brain:
     """
@@ -53,12 +59,22 @@ class Brain:
                 if match is not None:
                     dispatcher.dispatch("level-feature", feature)
 
-    def _dispatch_intrinsic_events(self, data):
-        for name, messages in intrinsics.messages.iteritems():
-            for message, value in messages.iteritems():
-                match = re.search(message, data, re.I | re.M)
-                if match is not None:
-                    dispatcher.dispatch("intrinsic", name, value)
+    def _dispatch_intrinsic_events(self, data):    
+
+        logging.basicConfig(filename="debug.out", level=logging.DEBUG)
+        logging.debug(ui.size())        
+        logging.debug(self.term.display)
+
+        intrinsicsResult = intrinsicsC.DispatchIntrinsics(
+            intrinsics.messages, self.term.display)
+  
+        for name, value in intrinsicsResult.items():
+          dispatcher.dispatch("intrinsic", name, value)
+#        for name, messages in intrinsics.messages.iteritems():
+#            for message, value in messages.iteritems():
+#                match = re.search(message, data, re.I | re.M)
+#                if match is not None:
+#                    dispatcher.dispatch("intrinsic", name, value)
 
     def _dispatch_status_events(self, data):
         """
