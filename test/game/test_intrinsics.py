@@ -61,6 +61,15 @@ class IntrinsicsTest(unittest.TestCase):
 	  self.assertEqual(res.items()[1][0], "valA")
 	  self.assertEqual(res.items()[1][1], True)
 
+	def test_found_valA_Enabled_valB_Disabled(self):
+	  testInput = "aaa blah bbZ blah"
+	  uTestInput = testInput.decode('utf-8')
+	  res = intrinsicsC.DispatchIntrinsics(testIntrinsics, [uTestInput])
+	  self.assertEqual(len(res), 2)
+	  self.assertEqual(res.items()[0][0], "valB")
+	  self.assertEqual(res.items()[0][1], False)
+	  self.assertEqual(res.items()[1][0], "valA")
+	  self.assertEqual(res.items()[1][1], True)
 
 if __name__ == "__main__":
   unittest.main()
