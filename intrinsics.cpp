@@ -1,6 +1,6 @@
 #include <fstream>
 #include <string>
-#include <map>
+//#include <map>
 #include <vector>
 
 #include <Python.h>
@@ -11,62 +11,76 @@ namespace
 {
     static bool firstTime = true;
 
-    struct Effect
+    struct TextSearchItem
     {
-	Effect()
+	TextSearchItem()
 	{}
 
-	Effect(const string& name, bool result) : intrinsicName_(name), result_(result)
+	TextSearchItem(const string& name, const wstring& searchTerm, bool result) 
+	    : name_(name), 
+	    searchTerm_(searchTerm),
+	    result_(result)
 	{}
 
-	string intrinsicName_;
-	bool result_; // enabled or disabled
+	string name_;
+	wstring searchTerm_;
+	bool result_; // item enabled or disabled
     };
 
-    typedef map<wstring, Effect> EffectsMap;
-    static EffectsMap effects;
+    typedef vector<TextSearchItem> TextSearchItems;
+    static TextSearchItems searchItems;
 
-    static void ParseDictionary(PyObject* intrinsicsDictionary, wofstream& fs)
+    string ToStr(PyObject* pyOb)
     {
-	PyObject *keys = PyDict_Keys(intrinsicsDictionary);
+	// is type-check needed?
+	return PyString_AsString(pyOb); 
+    }
+
+    wstring ToWStr(PyObject* pyOb)
+    {
+	// is type-check needed?
+	const string str = PyString_AsString(pyOb); 
+	return wstring(str.begin(), str.end());
+    }
+
+    bool ToBool(PyObject* pyOb)
+    {
+	// if PyBool_check(pyOb) ... is type-check needed?
+	return Py_True == pyOb;
+    }
+
+    static void ParseDictionary(PyObject* dictionary, wofstream& fs)
+    {
+	firstTime = false; // we don't want to do this again...
+	
+	PyObject *keys = PyDict_Keys(dictionary);
 	for(int i = 0; i < PyList_Size(keys); ++i)
 	{
-	    PyObject *thisKey = PyList_GetItem(keys, i);
-	    PyObject *thisValue = PyDict_GetItem(intrinsicsDictionary, thisKey); 
-	    if(PyDict_Check(thisValue))
+	    PyObject* pyItemName = PyList_GetItem(keys, i);
+	    const string itemName = ToStr(pyItemName);
+
+	    PyObject *itemSearchTerms = PyDict_GetItem(dictionary, pyItemName); 
+	    if(!PyDict_Check(itemSearchTerms))
 	    {
-		const string keyString = PyString_AsString(thisKey); 
-		const wstring wsKeyString(keyString.begin(), keyString.end());
-
-		PyObject *subKeys = PyDict_Keys(thisValue);
-
-		for(int j = 0; j < PyList_Size(subKeys); ++j)
-		{
-		    PyObject *thisSubKey = PyList_GetItem(subKeys, j);
-
-		    const string subKeyString = PyString_AsString(thisSubKey); 
-		    const wstring wsSubKeyString(subKeyString.begin(), subKeyString.end());
-
-
-		    PyObject *thisSubValue = PyDict_GetItem(thisValue, thisSubKey);
-		    if(thisSubValue)
-		    {
-			if(PyBool_Check(thisSubValue))
-			{
-
-			    fs << L"Search Text: " << wsSubKeyString;
-			    fs << L" value: " << (thisSubValue == Py_True ? L"enable" : L"disable");
-			    fs << L" " << wsKeyString << endl;
-
-			    effects[wsSubKeyString] = Effect(keyString, thisSubValue == Py_True);
-			}
-		    }
-		    else
-		    {
-			fs << L"value for " << wsSubKeyString << L" wasn't found" << endl;
-		    }
-		}
+		continue;
 	    }
+
+	    PyObject *subKeys = PyDict_Keys(itemSearchTerms);
+
+	    for(int j = 0; j < PyList_Size(subKeys); ++j)
+	    {
+		PyObject* pySearchTerm = PyList_GetItem(subKeys, j);
+
+		const wstring wsSearchTerm = ToWStr(pySearchTerm);		    
+		bool searchTermValue = ToBool(PyDict_GetItem(itemSearchTerms, pySearchTerm));
+
+		fs << L"Search Text: " << wsSearchTerm;		
+		fs << L" value: " << searchTermValue; 
+		const wstring wsItemName(itemName.begin(), itemName.end());
+		fs << L" " << wsItemName << endl;
+
+		searchItems.push_back(TextSearchItem(itemName, wsSearchTerm, searchTermValue));
+	    }	    
 	}
     }
 }
@@ -86,20 +100,21 @@ static PyObject* DispatchIntrinsics(PyObject *self, PyObject* args)
     {
 	fs << L"First time! Collating data!" << endl;
 
-	PyObject *intrinsicsDictionary = PyTuple_GetItem(args, 0);
-	if(PyDict_Check(intrinsicsDictionary))
+	PyObject *dictionary = PyTuple_GetItem(args, 0);
+	if(PyDict_Check(dictionary))
 	{
-	    ParseDictionary(intrinsicsDictionary, fs);
+	    ParseDictionary(dictionary, fs);
 	}
 	else
 	{
-	    fs << L" Intrinsics dictionary isn't a dictionary; we're buggered\n";
+	    fs << L"If the dictionary isn't a dictionary; we're scuppered\n";
 	    return NULL;
 	}
     }
 
-    vector<string> added;
-    vector<string> removed;
+    typedef pair<string, bool> StdResult;
+    typedef vector< StdResult > StdResults;
+    StdResults stdResults;
 
     PyObject *messageData = PyTuple_GetItem(args, 1);
     if(PyList_Check(messageData))
@@ -108,70 +123,64 @@ static PyObject* DispatchIntrinsics(PyObject *self, PyObject* args)
 
 	fs << L"Number of rows: " << listSize << endl;
 
-	for(int i=0;i<listSize;++i) 
+	for(int i=0 ; i < listSize ; ++i) 
 	{
 	    PyObject* line = PyList_GetItem(messageData, i);
-
-	    if(PyUnicode_Check(line))
+	    if(!PyUnicode_Check(line))
 	    {
-		const wstring wsLine(reinterpret_cast<wchar_t*>(PyUnicode_AS_UNICODE(line)));
-		fs << L"line (unicode) " << i << L" = " << wsLine << endl;
+		continue;
+	    }
 
-		for(EffectsMap::const_iterator it = effects.begin();
-			it != effects.end();
-			++it)
-		{    
-		    const wstring& searchterm = (*it).first;
+	    const wstring wsLine( reinterpret_cast< wchar_t* >( PyUnicode_AS_UNICODE(line) ) );
+	    fs << L"line (unicode) " << i << L" = " << wsLine << endl;
+	
+	    if(wsLine == L"")
+	    {
+		fs << L"empty. Next?" << endl;
+		continue;
+	    }
 
-		    fs << L"testing for " << searchterm << endl;
-		    if(string::npos != wsLine.find(searchterm))
-		    {	
-			const string name(it->second.intrinsicName_);
-	    		const wstring wsName(name.begin(), name.end());
+	    for(TextSearchItems::const_iterator it = searchItems.begin();
+		    it != searchItems.end();
+		    ++it)
+	    {    
+		fs << L"testing for " << it->searchTerm_ << endl;
+		if(string::npos != wsLine.find(it->searchTerm_))
+		{	
+		    const string name(it->name_);
+		    const wstring wsName(name.begin(), name.end());
 
-			if(it->second.result_)
-			{
-			    fs << L"found an Enable term" 
-				<< L"for " <<  wstring(wsName)
-				<< endl;					 
-			    added.push_back(it->second.intrinsicName_);
-			}			 
-			else
-			{ 
+		    if(it->result_)
+		    {
+			fs << L"found an Enable term " 
+			    << L"for " <<  wstring(wsName)
+			    << endl;					 
+			stdResults.push_back( StdResult(it->name_, true) );
+		    }			 
+		    else
+		    { 
 
-			    fs << L"found a Disable term for " 
-				<<  wstring(wsName)
-				<< endl;		
-			    removed.push_back(it->second.intrinsicName_);
-			}
-		    }			    
-		}
+			fs << L"found a Disable term for " 
+			    <<  wstring(wsName)
+			    << endl;	
+			stdResults.push_back( StdResult(it->name_, false) );
+		    }
+		}			    
 	    }
 	}
     }
 
-    PyObject* results = PyDict_New();
-    for(vector<string>::const_iterator it = added.begin(); it != added.end(); ++it)
+    PyObject* pyResults = PyDict_New();
+    for(StdResults::const_iterator it = stdResults.begin(); it != stdResults.end(); ++it)
     {	   
-	const wstring wsIt(it->begin(), it->end());
-       	fs << L"adding 	Enabled for " << wsIt << endl;
-	int res = PyDict_SetItem(results, PyString_FromString(it->c_str()), Py_True);
+	const string name(it->first);
+	int res = PyDict_SetItem(pyResults, PyString_FromString(name.c_str()), it->second ? Py_True : Py_False);
 	if(res != 0)
 	{
 	    fs << L"pydict_setitem failed!\n";
 	}
     }
-    for(vector<string>::const_iterator it = removed.begin(); it != removed.end(); ++it)
-    {	    
-	const wstring wsIt(it->begin(), it->end());
-       	fs << L"adding Disabled for " << wsIt << endl;
-	int res = PyDict_SetItem(results, PyString_FromString(it->c_str()), Py_False);
-	if(res != 0)
-	{
-	    fs << L"pydict_setitem failed!\n";
-	}
-    }
-    return results;
+    return pyResults;
 }       
 
 
