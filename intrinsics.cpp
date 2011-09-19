@@ -125,18 +125,22 @@ static PyObject* DispatchIntrinsics(PyObject *self, PyObject* args)
 
 		    fs << L"testing for " << searchterm << endl;
 		    if(string::npos != wsLine.find(searchterm))
-		    {			
+		    {	
+			const string name(it->second.intrinsicName_);
+	    		const wstring wsName(name.begin(), name.end());
+
 			if(it->second.result_)
 			{
 			    fs << L"found an Enable term" 
-				<< L"for " <<  wstring(it->second.intrinsicName_.begin(), it->second.intrinsicName_.end())
+				<< L"for " <<  wstring(wsName)
 				<< endl;					 
 			    added.push_back(it->second.intrinsicName_);
 			}			 
 			else
 			{ 
-			    fs << L"found a Disable term" 
-				<< L"for " <<  wstring(it->second.intrinsicName_.begin(), it->second.intrinsicName_.end())
+
+			    fs << L"found a Disable term for " 
+				<<  wstring(wsName)
 				<< endl;		
 			    removed.push_back(it->second.intrinsicName_);
 			}
@@ -148,7 +152,9 @@ static PyObject* DispatchIntrinsics(PyObject *self, PyObject* args)
 
     PyObject* results = PyDict_New();
     for(vector<string>::const_iterator it = added.begin(); it != added.end(); ++it)
-    {	    
+    {	   
+	const wstring wsIt(it->begin(), it->end());
+       	fs << L"adding 	Enabled for " << wsIt << endl;
 	int res = PyDict_SetItem(results, PyString_FromString(it->c_str()), Py_True);
 	if(res != 0)
 	{
@@ -157,6 +163,8 @@ static PyObject* DispatchIntrinsics(PyObject *self, PyObject* args)
     }
     for(vector<string>::const_iterator it = removed.begin(); it != removed.end(); ++it)
     {	    
+	const wstring wsIt(it->begin(), it->end());
+       	fs << L"adding Disabled for " << wsIt << endl;
 	int res = PyDict_SetItem(results, PyString_FromString(it->c_str()), Py_False);
 	if(res != 0)
 	{
