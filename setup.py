@@ -1,5 +1,8 @@
 from distutils.core import setup, Extension
 
+intrinsicsModule = Extension('intrinsicsC',
+		sources = ['noobhack/game/cpp/intrinsics.cpp'])
+
 setup(
     name="noobhack",
     version="0.3",
@@ -12,5 +15,5 @@ setup(
     packages=["noobhack", "noobhack.game"],
     scripts=["scripts/noobhack"],
     license="Lesser General Public License v3.0",
-    ext_modules=[Extension('intrinsicsC', ['intrinsics.cpp'])],
+    ext_modules=[intrinsicsModule], #Extension('intrinsicsC', ['noobhack/game/cpp/intrinsics.cpp'])],
 )
