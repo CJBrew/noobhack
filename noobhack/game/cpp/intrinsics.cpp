@@ -1,9 +1,7 @@
-#include <fstream>
-#include <string>
-//#include <map>
-#include <vector>
-
 #include <Python.h>
+
+#include <string>
+#include <vector>
 
 using namespace std;
 
@@ -24,7 +22,7 @@ namespace
 
 	string name_;
 	wstring searchTerm_;
-	bool result_; // item enabled or disabled
+	bool result_; // intrinsic/status enabled or disabled
     };
 
     typedef vector<TextSearchItem> TextSearchItems;
@@ -49,7 +47,7 @@ namespace
 	return Py_True == pyOb;
     }
 
-    static void ParseDictionary(PyObject* dictionary, wofstream& fs)
+    static void ParseDictionary(PyObject* dictionary)
     {
 	firstTime = false; // we don't want to do this again...
 	
@@ -74,11 +72,6 @@ namespace
 		const wstring wsSearchTerm = ToWStr(pySearchTerm);		    
 		bool searchTermValue = ToBool(PyDict_GetItem(itemSearchTerms, pySearchTerm));
 
-		fs << L"Search Text: " << wsSearchTerm;		
-		fs << L" value: " << searchTermValue; 
-		const wstring wsItemName(itemName.begin(), itemName.end());
-		fs << L" " << wsItemName << endl;
-
 		searchItems.push_back(TextSearchItem(itemName, wsSearchTerm, searchTermValue));
 	    }	    
 	}
@@ -87,27 +80,20 @@ namespace
 
 static PyObject* DispatchIntrinsics(PyObject *self, PyObject* args)
 {    
-    wofstream fs("out.txt", ios::app);
-    fs << L"In DispatchIntrinsics\n";
-
     if(PyTuple_Size(args) != 2)
     {
-	fs << L"Two args expected (found " << PyTuple_Size(args) << L")!\n";
 	return PyDict_New();
     }
 
     if(firstTime)
     {
-	fs << L"First time! Collating data!" << endl;
-
 	PyObject *dictionary = PyTuple_GetItem(args, 0);
 	if(PyDict_Check(dictionary))
 	{
-	    ParseDictionary(dictionary, fs);
+	    ParseDictionary(dictionary);
 	}
 	else
 	{
-	    fs << L"If the dictionary isn't a dictionary; we're scuppered\n";
 	    return NULL;
 	}
     }
@@ -121,8 +107,6 @@ static PyObject* DispatchIntrinsics(PyObject *self, PyObject* args)
     {
 	int listSize = PyList_Size(messageData);
 
-	fs << L"Number of rows: " << listSize << endl;
-
 	for(int i=0 ; i < listSize ; ++i) 
 	{
 	    PyObject* line = PyList_GetItem(messageData, i);
@@ -132,11 +116,9 @@ static PyObject* DispatchIntrinsics(PyObject *self, PyObject* args)
 	    }
 
 	    const wstring wsLine( reinterpret_cast< wchar_t* >( PyUnicode_AS_UNICODE(line) ) );
-	    fs << L"line (unicode) " << i << L" = " << wsLine << endl;
 	
 	    if(wsLine == L"")
 	    {
-		fs << L"empty. Next?" << endl;
 		continue;
 	    }
 
@@ -144,7 +126,6 @@ static PyObject* DispatchIntrinsics(PyObject *self, PyObject* args)
 		    it != searchItems.end();
 		    ++it)
 	    {    
-		fs << L"testing for " << it->searchTerm_ << endl;
 		if(string::npos != wsLine.find(it->searchTerm_))
 		{	
 		    const string name(it->name_);
@@ -152,17 +133,10 @@ static PyObject* DispatchIntrinsics(PyObject *self, PyObject* args)
 
 		    if(it->result_)
 		    {
-			fs << L"found an Enable term " 
-			    << L"for " <<  wstring(wsName)
-			    << endl;					 
 			stdResults.push_back( StdResult(it->name_, true) );
 		    }			 
 		    else
 		    { 
-
-			fs << L"found a Disable term for " 
-			    <<  wstring(wsName)
-			    << endl;	
 			stdResults.push_back( StdResult(it->name_, false) );
 		    }
 		}			    
@@ -174,11 +148,7 @@ static PyObject* DispatchIntrinsics(PyObject *self, PyObject* args)
     for(StdResults::const_iterator it = stdResults.begin(); it != stdResults.end(); ++it)
     {	   
 	const string name(it->first);
-	int res = PyDict_SetItem(pyResults, PyString_FromString(name.c_str()), it->second ? Py_True : Py_False);
-	if(res != 0)
-	{
-	    fs << L"pydict_setitem failed!\n";
-	}
+        PyDict_SetItem(pyResults, PyString_FromString(name.c_str()), it->second ? Py_True : Py_False);
     }
     return pyResults;
 }       
