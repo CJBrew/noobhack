@@ -1,6 +1,7 @@
 #include <Python.h>
 
 #include <string>
+#include <sstream>
 #include <vector>
 
 using namespace std;
@@ -107,6 +108,8 @@ static PyObject* DispatchIntrinsics(PyObject *self, PyObject* args)
     {
 	int listSize = PyList_Size(messageData);
 
+	wostringstream lines;
+
 	for(int i=0 ; i < listSize ; ++i) 
 	{
 	    PyObject* line = PyList_GetItem(messageData, i);
@@ -116,39 +119,43 @@ static PyObject* DispatchIntrinsics(PyObject *self, PyObject* args)
 	    }
 
 	    const wstring wsLine( reinterpret_cast< wchar_t* >( PyUnicode_AS_UNICODE(line) ) );
-	
+	    lines << wsLine;
+
 	    if(wsLine == L"")
 	    {
 		continue;
 	    }
-
-	    for(TextSearchItems::const_iterator it = searchItems.begin();
-		    it != searchItems.end();
-		    ++it)
-	    {    
-		if(string::npos != wsLine.find(it->searchTerm_))
-		{	
-		    const string name(it->name_);
-		    const wstring wsName(name.begin(), name.end());
-
-		    if(it->result_)
-		    {
-			stdResults.push_back( StdResult(it->name_, true) );
-		    }			 
-		    else
-		    { 
-			stdResults.push_back( StdResult(it->name_, false) );
-		    }
-		}			    
-	    }
 	}
+
+	const wstring fullScreenData = lines.str();
+
+	for(TextSearchItems::const_iterator it = searchItems.begin();
+			it != searchItems.end();
+			++it)
+	{    
+		if(string::npos != fullScreenData.find(it->searchTerm_))
+		{	
+			const string name(it->name_);
+			const wstring wsName(name.begin(), name.end());
+
+			if(it->result_)
+			{
+				stdResults.push_back( StdResult(it->name_, true) );
+			}			 
+			else
+			{ 
+				stdResults.push_back( StdResult(it->name_, false) );
+			}
+		}			    
+	}
+
     }
 
     PyObject* pyResults = PyDict_New();
     for(StdResults::const_iterator it = stdResults.begin(); it != stdResults.end(); ++it)
     {	   
-	const string name(it->first);
-        PyDict_SetItem(pyResults, PyString_FromString(name.c_str()), it->second ? Py_True : Py_False);
+	    const string name(it->first);
+	    PyDict_SetItem(pyResults, PyString_FromString(name.c_str()), it->second ? Py_True : Py_False);
     }
     return pyResults;
 }       
@@ -156,12 +163,12 @@ static PyObject* DispatchIntrinsics(PyObject *self, PyObject* args)
 
 static PyMethodDef IntrinsicsMethods[] = 
 {
-    {"DispatchIntrinsics", DispatchIntrinsics, METH_VARARGS, "Figure out Intrinsics changed..."},
-    {NULL, NULL, 0, NULL}
+	{"DispatchIntrinsics", DispatchIntrinsics, METH_VARARGS, "Figure out Intrinsics changed..."},
+	{NULL, NULL, 0, NULL}
 };
 
 PyMODINIT_FUNC initintrinsicsC()
 {
-    (void) Py_InitModule("intrinsicsC", IntrinsicsMethods);
+	(void) Py_InitModule("intrinsicsC", IntrinsicsMethods);
 }
 
