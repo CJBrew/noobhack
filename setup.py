@@ -1,7 +1,8 @@
 from distutils.core import setup, Extension
 
 intrinsicsModule = Extension('intrinsicsC',
-		sources = ['noobhack/game/cpp/intrinsics.cpp'])
+		sources = ['noobhack/game/cpp/intrinsics.cpp'],
+		libraries = ['boost_regex'])
 
 setup(
     name="noobhack",
@@ -17,3 +18,5 @@ setup(
     license="Lesser General Public License v3.0",
     ext_modules=[intrinsicsModule], #Extension('intrinsicsC', ['noobhack/game/cpp/intrinsics.cpp'])],
 )
+
+

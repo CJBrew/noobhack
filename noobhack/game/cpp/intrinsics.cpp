@@ -1,5 +1,7 @@
 #include <Python.h>
 
+#include <boost/regex.hpp>
+
 #include <string>
 #include <sstream>
 #include <vector>
@@ -48,7 +50,7 @@ namespace
 	return Py_True == pyOb;
     }
 
-    static void ParseDictionary(PyObject* dictionary)
+static void ParseDictionary(PyObject* dictionary)
     {
 	firstTime = false; // we don't want to do this again...
 	
@@ -89,6 +91,7 @@ static PyObject* DispatchIntrinsics(PyObject *self, PyObject* args)
     if(firstTime)
     {
 	PyObject *dictionary = PyTuple_GetItem(args, 0);
+	// is type-check needed?
 	if(PyDict_Check(dictionary))
 	{
 	    ParseDictionary(dictionary);
@@ -104,6 +107,7 @@ static PyObject* DispatchIntrinsics(PyObject *self, PyObject* args)
     StdResults stdResults;
 
     PyObject *messageData = PyTuple_GetItem(args, 1);
+    // is type-check needed?
     if(PyList_Check(messageData))
     {
 	int listSize = PyList_Size(messageData);
@@ -133,7 +137,7 @@ static PyObject* DispatchIntrinsics(PyObject *self, PyObject* args)
 			it != searchItems.end();
 			++it)
 	{    
-		if(string::npos != fullScreenData.find(it->searchTerm_))
+		if(boost::regex_search(fullScreenData, boost::wregex(it->searchTerm_)))
 		{	
 			const string name(it->name_);
 			const wstring wsName(name.begin(), name.end());
